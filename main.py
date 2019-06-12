@@ -29,6 +29,17 @@ dst = cv2.fastNlMeansDenoising(solution,None,50,7,21)
 # plt.show()
 src_gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
 src_gray = cv2.blur(src_gray, (3,3))
+ret,src_gray = cv2.threshold(src_gray, 240, 255, cv2.THRESH_BINARY)
+
+def find_if_close(cnt1,cnt2):
+    row1,row2 = cnt1.shape[0],cnt2.shape[0]
+    for i in range(row1):
+        for j in range(row2):
+            dist = np.linalg.norm(cnt1[i]-cnt2[j])
+            if abs(dist) < 5 :
+                return True
+            elif i==row1-1 and j==row2-1:
+                return False
 
 def thresh_callback(val):
     threshold = val
@@ -36,6 +47,33 @@ def thresh_callback(val):
     canny_output = cv2.Canny(src_gray, threshold, threshold * 2)
 
     contours, _ = cv2.findContours(canny_output, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    LENGTH = len(contours)
+    status = np.zeros((LENGTH, 1))
+
+    for i, cnt1 in enumerate(contours):
+        x = i
+        if i != LENGTH - 1:
+            for j, cnt2 in enumerate(contours[i + 1:]):
+                x = x + 1
+                dist = find_if_close(cnt1, cnt2)
+                if dist == True:
+                    val = min(status[i], status[x])
+                    status[x] = status[i] = val
+                else:
+                    if status[x] == status[i]:
+                        status[x] = i + 1
+
+    unified = []
+    maximum = int(status.max()) + 1
+    for i in range(maximum):
+        pos = np.where(status == i)[0]
+        if pos.size != 0:
+            cont = np.vstack(contours[i] for i in pos)
+            hull = cv2.convexHull(cont)
+            unified.append(hull)
+
+    contours = unified
 
     contours_poly = [None] * len(contours)
     boundRect = [None] * len(contours)
