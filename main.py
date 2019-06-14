@@ -25,11 +25,14 @@ model = keras.models.load_model('fashion.h5')
 solution = img.copy()
 
 dst = cv2.fastNlMeansDenoising(solution,None,50,7,21)
+
 # plt.subplot(121),plt.imshow(solution)
 # plt.subplot(122),plt.imshow(dst)
 # plt.show()
+
 src_gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
 src_gray = cv2.blur(src_gray, (3,3))
+
 # dst = deepcopy(src_gray)
 # plt.subplot(122),plt.imshow(dst)
 # plt.show()
@@ -135,55 +138,30 @@ kernel_gaussian_unmasking = np.asarray([
   [1, 4, 6, 4, 1]
 ])/(-256)
 
-imageHeight = boundingBoxes[7][3]
-imageWidth = boundingBoxes[7][2]
-
 print(boundingBoxes)
-print(imageWidth, imageHeight)
+# print(imageWidth, imageHeight)
 
-def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
-    # initialize the dimensions of the image to be resized and
-    # grab the image size
-    dim = None
-    (h, w) = image.shape[:2]
+i = 2
 
-    # if both the width and height are None, then return the
-    # original image
-    if width is None and height is None:
-        return image
-
-    # check to see if the width is None
-    if width is None:
-        # calculate the ratio of the height and construct the
-        # dimensions
-        r = height / float(h)
-        dim = (int(w * r), height)
-
-    # otherwise, the height is None
-    else:
-        # calculate the ratio of the width and construct the
-        # dimensions
-        r = width / float(w)
-        dim = (width, int(h * r))
-
-    # resize the image
-    resized = cv2.resize(image, dim, interpolation = inter)
-
-    # return the resized image
-    return resized
+imageHeight = boundingBoxes[i][3]
+imageWidth = boundingBoxes[i][2]
 
 if imageWidth > imageHeight:
-    firstImage = dst[boundingBoxes[7][1]: boundingBoxes[7][1] + boundingBoxes[7][2],
-                 boundingBoxes[7][0]: boundingBoxes[7][0] + boundingBoxes[7][2]]
+    # boundingBoxes[7][1] -= (imageWidth - imageHeight)
+    boundingBoxes[i] = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
+    firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][2],
+                 boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
     res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
 else:
-    firstImage = dst[boundingBoxes[7][1] : boundingBoxes[7][1] + boundingBoxes[7][3],
-             boundingBoxes[7][0] : boundingBoxes[7][0] + boundingBoxes[7][3]]
+    # boundingBoxes[7][0] -= imageHeight - imageWidth
+    boundingBoxes[i] = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
+    firstImage = solution[boundingBoxes[i][1] : boundingBoxes[i][1] + boundingBoxes[i][3],
+             boundingBoxes[i][0] : boundingBoxes[i][0] + boundingBoxes[i][3]]
+    res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
+
 # firstImage = cv2.filter2D(firstImage, -1, kernel_sharpen)
 # firstImage = cv2.filter2D(firstImage, -1, kernel_gaussian_unmasking)
-    res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
-# res = image_resize(firstImage, height=28)
-res = cv2.filter2D(res, -1, kernel_sharpen)
+
 res = cv2.bitwise_not(res)
 
 cv2.imwrite('test.png', res)
@@ -192,13 +170,13 @@ plt.show()
 
 res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
 res = res.reshape(1, 28, 28, 1)
-# print(res.shape)
 
-probs = model.predict(res)
-print(probs)
-prediction = probs.argmax(axis=1)
-label = labelNames[prediction[0]]
-print(label)
+if imageWidth > 13 and imageHeight > 13:
+    probs = model.predict(res)
+    print(probs)
+    prediction = probs.argmax(axis=1)
+    label = labelNames[prediction[0]]
+    print(label)
 
 cv2.waitKey(0)
 
