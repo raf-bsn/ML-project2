@@ -19,7 +19,7 @@ img = cv2.imread('tests/{}.png'.format(tp_idx))
 # Ne menjati fajl van ove sekcije.
 
 # Ucitavamo model
-model = keras.models.load_model('fashion.h5')
+model = keras.models.load_model('fashion2.h5')
 
 solution = img.copy()
 
@@ -118,6 +118,8 @@ print(boundingBoxes)
 for i in range(len(boundingBoxes)):
     imageHeight = boundingBoxes[i][3]
     imageWidth = boundingBoxes[i][2]
+    if imageHeight <= 10 or imageWidth <= 10:
+        continue
 
     if imageWidth > imageHeight:
         boundingBoxes[i] = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
@@ -158,4 +160,4 @@ cv2.waitKey(0)
 #################################################################################
 
 # Cuvamo resenje u izlazni fajl
-cv2.imwrite("tests/{}_out1.png".format(tp_idx), draw)
+cv2.imwrite("tests/{}_out2.png".format(tp_idx), draw)

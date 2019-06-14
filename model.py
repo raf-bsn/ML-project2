@@ -132,4 +132,4 @@ print('Test accuracy:', scores[1])
 #################################################################################
 
 # Cuvanje istreniranog modela u fajl
-model.save('fashion2.h5')
+model.save('fashion3.h5')
