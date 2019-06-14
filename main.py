@@ -3,6 +3,7 @@ import keras
 import numpy as np
 import sys
 import random as rng
+from copy import deepcopy
 from matplotlib import pyplot as plt
 
 # Prvi i jedini argument komandne linije je indeks test primera
@@ -19,7 +20,7 @@ img = cv2.imread('tests/{}.png'.format(tp_idx))
 # Ne menjati fajl van ove sekcije.
 
 # Ucitavamo model
-# model = keras.models.load_model('fashion.h5')
+model = keras.models.load_model('fashion.h5')
 
 solution = img.copy()
 
@@ -29,6 +30,10 @@ dst = cv2.fastNlMeansDenoising(solution,None,50,7,21)
 # plt.show()
 src_gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
 src_gray = cv2.blur(src_gray, (3,3))
+# dst = deepcopy(src_gray)
+# plt.subplot(122),plt.imshow(dst)
+# plt.show()
+
 ret,src_gray = cv2.threshold(src_gray, 240, 255, cv2.THRESH_BINARY)
 
 def find_if_close(cnt1,cnt2):
@@ -94,6 +99,7 @@ def thresh_callback(val):
         # cv2.circle(drawing, (int(centers[i][0]), int(centers[i][1])), int(radius[i]), color, 2)
 
     cv2.imshow('Contours', drawing)
+    return boundRect
 
 source_window = 'Source'
 cv2.namedWindow(source_window)
@@ -102,14 +108,98 @@ cv2.imshow(source_window, img)
 max_thresh = 255
 thresh = 10 # initial threshold
 cv2.createTrackbar('Canny thresh:', source_window, thresh, max_thresh, thresh_callback)
-thresh_callback(thresh)
+boundingBoxes = thresh_callback(thresh)
 
-# black_pixels = np.where(dst <= 240)
-# coords = np.column_stack((black_pixels[1], black_pixels[0]))
-# rect = cv2.minAreaRect(coords)
-# box = np.int0(np.around(cv2.boxPoints(rect)))
-# cv2.drawContours(solution, [box],0,255,5)
-# cv2.imshow('', solution)
+labelNames = ["top", "trouser", "pullover", "dress", "coat",
+	"sandal", "shirt", "sneaker", "bag", "ankle boot"]
+
+kernel_sharpen = np.asarray([
+  [-1, -1, -1],
+  [-1, 9, -1],
+  [-1, -1, -1]
+])
+
+kernel_gaussian_blur = np.asarray([
+  [1, 4, 6, 4, 1],
+  [4, 16, 24, 16, 4],
+  [6, 24, 36, 24, 6],
+  [4, 16, 24, 16, 4],
+  [1, 4, 6, 4, 1]
+])/256
+
+kernel_gaussian_unmasking = np.asarray([
+  [1, 4, 6, 4, 1],
+  [4, 16, 24, 16, 4],
+  [6, 24, -476, 24, 6],
+  [4, 16, 24, 16, 4],
+  [1, 4, 6, 4, 1]
+])/(-256)
+
+imageHeight = boundingBoxes[7][3]
+imageWidth = boundingBoxes[7][2]
+
+print(boundingBoxes)
+print(imageWidth, imageHeight)
+
+def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
+    # initialize the dimensions of the image to be resized and
+    # grab the image size
+    dim = None
+    (h, w) = image.shape[:2]
+
+    # if both the width and height are None, then return the
+    # original image
+    if width is None and height is None:
+        return image
+
+    # check to see if the width is None
+    if width is None:
+        # calculate the ratio of the height and construct the
+        # dimensions
+        r = height / float(h)
+        dim = (int(w * r), height)
+
+    # otherwise, the height is None
+    else:
+        # calculate the ratio of the width and construct the
+        # dimensions
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    # resize the image
+    resized = cv2.resize(image, dim, interpolation = inter)
+
+    # return the resized image
+    return resized
+
+if imageWidth > imageHeight:
+    firstImage = dst[boundingBoxes[7][1]: boundingBoxes[7][1] + boundingBoxes[7][2],
+                 boundingBoxes[7][0]: boundingBoxes[7][0] + boundingBoxes[7][2]]
+    res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
+else:
+    firstImage = dst[boundingBoxes[7][1] : boundingBoxes[7][1] + boundingBoxes[7][3],
+             boundingBoxes[7][0] : boundingBoxes[7][0] + boundingBoxes[7][3]]
+# firstImage = cv2.filter2D(firstImage, -1, kernel_sharpen)
+# firstImage = cv2.filter2D(firstImage, -1, kernel_gaussian_unmasking)
+    res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
+# res = image_resize(firstImage, height=28)
+res = cv2.filter2D(res, -1, kernel_sharpen)
+res = cv2.bitwise_not(res)
+
+cv2.imwrite('test.png', res)
+plt.subplot(122),plt.imshow(res)
+plt.show()
+
+res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+res = res.reshape(1, 28, 28, 1)
+# print(res.shape)
+
+probs = model.predict(res)
+print(probs)
+prediction = probs.argmax(axis=1)
+label = labelNames[prediction[0]]
+print(label)
+
 cv2.waitKey(0)
 
 #################################################################################
