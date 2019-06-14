@@ -2,7 +2,6 @@ import cv2
 import keras
 import numpy as np
 import sys
-import random as rng
 from copy import deepcopy
 from matplotlib import pyplot as plt
 
@@ -20,7 +19,7 @@ img = cv2.imread('tests/{}.png'.format(tp_idx))
 # Ne menjati fajl van ove sekcije.
 
 # Ucitavamo model
-model = keras.models.load_model('fashion.h5')
+model = keras.models.load_model('fashion1.h5')
 
 solution = img.copy()
 
@@ -37,23 +36,24 @@ src_gray = cv2.blur(src_gray, (3,3))
 # plt.subplot(122),plt.imshow(dst)
 # plt.show()
 
-ret,src_gray = cv2.threshold(src_gray, 240, 255, cv2.THRESH_BINARY)
+ret, src_gray = cv2.threshold(src_gray, 240, 255, cv2.THRESH_BINARY)
 
-def find_if_close(cnt1,cnt2):
-    row1,row2 = cnt1.shape[0],cnt2.shape[0]
+
+def find_if_close(cnt1, cnt2):
+    row1, row2 = cnt1.shape[0], cnt2.shape[0]
     for i in range(row1):
         for j in range(row2):
             dist = np.linalg.norm(cnt1[i]-cnt2[j])
-            if abs(dist) < 5 :
+            if abs(dist) < 5:
                 return True
-            elif i==row1-1 and j==row2-1:
+            elif i == row1-1 and j == row2-1:
                 return False
+
 
 def thresh_callback(val):
     threshold = val
 
     canny_output = cv2.Canny(src_gray, threshold, threshold * 2)
-
     contours, _ = cv2.findContours(canny_output, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     LENGTH = len(contours)
@@ -65,7 +65,7 @@ def thresh_callback(val):
             for j, cnt2 in enumerate(contours[i + 1:]):
                 x = x + 1
                 dist = find_if_close(cnt1, cnt2)
-                if dist == True:
+                if dist is True:
                     val = min(status[i], status[x])
                     status[x] = status[i] = val
                 else:
@@ -92,95 +92,71 @@ def thresh_callback(val):
         boundRect[i] = cv2.boundingRect(contours_poly[i])
         centers[i], radius[i] = cv2.minEnclosingCircle(contours_poly[i])
 
-    drawing = np.zeros((canny_output.shape[0], canny_output.shape[1], 3), dtype=np.uint8)
-
     for i in range(len(contours)):
-        color = (rng.randint(0, 256), rng.randint(0, 256), rng.randint(0, 256))
-        cv2.drawContours(drawing, contours_poly, i, color)
-        cv2.rectangle(drawing, (int(boundRect[i][0]), int(boundRect[i][1])), \
+        color = (255, 0, 0)
+        latitude = boundRect[i][2] * boundRect[i][3]
+        if latitude < 100:                                      # izbacivanje malih kontura
+            continue
+        # cv2.drawContours(img, contours_poly, i, color)
+        cv2.rectangle(img, (int(boundRect[i][0]), int(boundRect[i][1])), \
                      (int(boundRect[i][0] + boundRect[i][2]), int(boundRect[i][1] + boundRect[i][3])), color, 2)
-        # cv2.circle(drawing, (int(centers[i][0]), int(centers[i][1])), int(radius[i]), color, 2)
 
-    cv2.imshow('Contours', drawing)
     return boundRect
 
 source_window = 'Source'
 cv2.namedWindow(source_window)
-cv2.imshow(source_window, img)
 
 max_thresh = 255
 thresh = 10 # initial threshold
 cv2.createTrackbar('Canny thresh:', source_window, thresh, max_thresh, thresh_callback)
 boundingBoxes = thresh_callback(thresh)
 
-labelNames = ["top", "trouser", "pullover", "dress", "coat",
-	"sandal", "shirt", "sneaker", "bag", "ankle boot"]
-
-kernel_sharpen = np.asarray([
-  [-1, -1, -1],
-  [-1, 9, -1],
-  [-1, -1, -1]
-])
-
-kernel_gaussian_blur = np.asarray([
-  [1, 4, 6, 4, 1],
-  [4, 16, 24, 16, 4],
-  [6, 24, 36, 24, 6],
-  [4, 16, 24, 16, 4],
-  [1, 4, 6, 4, 1]
-])/256
-
-kernel_gaussian_unmasking = np.asarray([
-  [1, 4, 6, 4, 1],
-  [4, 16, 24, 16, 4],
-  [6, 24, -476, 24, 6],
-  [4, 16, 24, 16, 4],
-  [1, 4, 6, 4, 1]
-])/(-256)
+labelNames = ["top", "trouser", "pullover", "dress", "coat", "sandal", "shirt", "sneaker", "bag", "ankle boot"]
 
 print(boundingBoxes)
-# print(imageWidth, imageHeight)
 
-i = 2
+for i in range(len(boundingBoxes)):
+    imageHeight = boundingBoxes[i][3]
+    imageWidth = boundingBoxes[i][2]
+    if imageWidth > 13 and imageHeight > 13:
 
-imageHeight = boundingBoxes[i][3]
-imageWidth = boundingBoxes[i][2]
+        if imageWidth > imageHeight:
+            boundingBoxes[i] = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
+            firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][2],
+                         boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
+            res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
+        else:
+            boundingBoxes[i] = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
+            firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][3],
+                     boundingBoxes[i][0] : boundingBoxes[i][0] + boundingBoxes[i][3]]
+            res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
 
-if imageWidth > imageHeight:
-    # boundingBoxes[7][1] -= (imageWidth - imageHeight)
-    boundingBoxes[i] = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
-    firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][2],
-                 boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
-    res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
-else:
-    # boundingBoxes[7][0] -= imageHeight - imageWidth
-    boundingBoxes[i] = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
-    firstImage = solution[boundingBoxes[i][1] : boundingBoxes[i][1] + boundingBoxes[i][3],
-             boundingBoxes[i][0] : boundingBoxes[i][0] + boundingBoxes[i][3]]
-    res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
+        res = np.flip(res, -1)                      # flip vertical, then horizontal
+        res = cv2.bitwise_not(res)
 
-# firstImage = cv2.filter2D(firstImage, -1, kernel_sharpen)
-# firstImage = cv2.filter2D(firstImage, -1, kernel_gaussian_unmasking)
+        # normalization
+        # res = cv2.normalize(res, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        res = res.astype('float32')
+        res = res / 255
+        res = cv2.resize(res, (28, 28))
 
-res = cv2.bitwise_not(res)
+        res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+        res = res.reshape(1, 28, 28, 1)
 
-cv2.imwrite('test.png', res)
-plt.subplot(122),plt.imshow(res)
-plt.show()
+        probabilities = model.predict(res)
+        print(probabilities)
+        prediction = probabilities.argmax(axis=1)
+        label = labelNames[prediction[0]]
+        print(label)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        draw = cv2.putText(img, label, (boundingBoxes[i][0], boundingBoxes[i][1]), font, 0.5, (0, 0, 255), 1,
+                           cv2.LINE_AA)
 
-res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-res = res.reshape(1, 28, 28, 1)
-
-if imageWidth > 13 and imageHeight > 13:
-    probs = model.predict(res)
-    print(probs)
-    prediction = probs.argmax(axis=1)
-    label = labelNames[prediction[0]]
-    print(label)
+cv2.imshow('Solution: {}'.format(tp_idx), draw)
 
 cv2.waitKey(0)
 
 #################################################################################
 
 # Cuvamo resenje u izlazni fajl
-# cv2.imwrite("tests/{}_out.png".format(tp_idx), solution)
+cv2.imwrite("tests/{}_out.png".format(tp_idx), draw)
