@@ -3,6 +3,7 @@ from keras.datasets import fashion_mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D, BatchNormalization
+from keras.callbacks import ReduceLROnPlateau
 from keras.optimizers import SGD
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
@@ -32,40 +33,41 @@ x_test = x_test.reshape(10000, 28, 28, 1)
 print(x_train.shape, y_train.shape)
 print(x_test.shape, y_test.shape)
 
-batch_size = 32
+batch_size = 512
 num_classes = 10
-epochs = 25
+epochs = 40
 
 model = Sequential()
-model.add(Conv2D(32, (3, 3), padding='same',
+model.add(Conv2D(32, (5, 5), padding='same', activation='relu',
                  input_shape=x_train.shape[1:]))
-model.add(BatchNormalization(axis=3))
-model.add(Activation('relu'))
-model.add(Conv2D(32, (3, 3), padding='same'))
-model.add(BatchNormalization(axis=3))
-model.add(Activation('relu'))
+# model.add(BatchNormalization(axis=3))
+# model.add(Activation('relu'))
+model.add(Conv2D(32, (5, 5), padding='same', activation='relu'))
+# model.add(BatchNormalization(axis=3))
+# model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))  # Max pooling 2x2
 model.add(Dropout(rate=0.25))  # Dropout metoda regularizacije
 
-model.add(Conv2D(64, (3, 3), padding='same'))
-model.add(BatchNormalization(axis=3))
-model.add(Activation('relu'))
-model.add(Conv2D(64, (3, 3), padding='same'))
-model.add(BatchNormalization(axis=3))
-model.add(Activation('relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
+# model.add(BatchNormalization(axis=3))
+# model.add(Activation('relu'))
+model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
+# model.add(BatchNormalization(axis=3))
+# model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
 model.add(Dropout(rate=0.25))
 
 model.add(Flatten())
-model.add(Dense(1024))  # Prvi potpuno povezan sloj
-model.add(Activation('relu'))
+model.add(Dense(512, activation='relu'))  # Prvi potpuno povezan sloj
+# model.add(Activation('relu'))
+model.add(BatchNormalization())
 model.add(Dropout(rate=0.5))
-model.add(Dense(num_classes))  # Finalni potpuno povezan sloj
-model.add(Activation('softmax'))
+model.add(Dense(num_classes, activation='softmax'))  # Finalni potpuno povezan sloj
+# model.add(Activation('softmax'))
 
 # Koristimo SGD optimizer
-# opt = keras.optimizers.rmsprop(lr=0.0001, decay=1e-6)
-opt = SGD(lr=0.01, momentum=0.9, decay=0.01 / epochs)
+opt = keras.optimizers.rmsprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.0)
+# opt = SGD(lr=0.01, momentum=0.9, decay=0.01 / epochs)
 
 # Kompilacija modela
 model.compile(loss='categorical_crossentropy',
@@ -77,6 +79,12 @@ x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
 x_train /= 255
 x_test /= 255
+
+learning_rate_reduction = ReduceLROnPlateau(monitor='val_acc',
+                                            patience=3,
+                                            verbose=1,
+                                            factor=0.5,
+                                            min_lr=0.00001)
 
 # datagen = ImageDataGenerator(
 #         featurewise_center=False,  # set input mean to 0 over the dataset
@@ -118,11 +126,18 @@ x_test /= 255
 #                     steps_per_epoch=x_train.shape[0] // batch_size,
 #                     workers=4)
 
+# model.fit(x_train, y_train,
+#           batch_size=batch_size,
+#           epochs=epochs,
+#           validation_data=(x_test, y_test),
+#           shuffle=True)
+
 model.fit(x_train, y_train,
           batch_size=batch_size,
           epochs=epochs,
           validation_data=(x_test, y_test),
-          shuffle=True)
+          verbose=1,
+          callbacks=[learning_rate_reduction])
 
 # Ispisujemo finalni rezultat na test skupu
 scores = model.evaluate(x_test, y_test, verbose=1)
