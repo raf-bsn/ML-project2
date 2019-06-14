@@ -19,7 +19,7 @@ img = cv2.imread('tests/{}.png'.format(tp_idx))
 # Ne menjati fajl van ove sekcije.
 
 # Ucitavamo model
-model = keras.models.load_model('fashion1.h5')
+model = keras.models.load_model('fashion.h5')
 
 solution = img.copy()
 
@@ -103,54 +103,53 @@ def thresh_callback(val):
 
     return boundRect
 
-source_window = 'Source'
-cv2.namedWindow(source_window)
+# source_window = 'Source'
+# cv2.namedWindow(source_window)
 
 max_thresh = 255
 thresh = 10 # initial threshold
-cv2.createTrackbar('Canny thresh:', source_window, thresh, max_thresh, thresh_callback)
+# cv2.createTrackbar('Canny thresh:', source_window, thresh, max_thresh, thresh_callback)
 boundingBoxes = thresh_callback(thresh)
 
-labelNames = ["top", "trouser", "pullover", "dress", "coat", "sandal", "shirt", "sneaker", "bag", "ankle boot"]
+labelNames = ["tshirt/top", "trouser", "pullover", "dress", "coat", "sandal", "shirt", "sneaker", "bag", "ankle boot"]
 
 print(boundingBoxes)
 
 for i in range(len(boundingBoxes)):
     imageHeight = boundingBoxes[i][3]
     imageWidth = boundingBoxes[i][2]
-    if imageWidth > 13 and imageHeight > 13:
 
-        if imageWidth > imageHeight:
-            boundingBoxes[i] = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
-            firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][2],
-                         boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
-            res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
-        else:
-            boundingBoxes[i] = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
-            firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][3],
-                     boundingBoxes[i][0] : boundingBoxes[i][0] + boundingBoxes[i][3]]
-            res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
+    if imageWidth > imageHeight:
+        boundingBoxes[i] = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
+        firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][2],
+                     boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
+        res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
+    else:
+        boundingBoxes[i] = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
+        firstImage = solution[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][3],
+                 boundingBoxes[i][0] : boundingBoxes[i][0] + boundingBoxes[i][3]]
+        res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
 
-        res = np.flip(res, -1)                      # flip vertical, then horizontal
-        res = cv2.bitwise_not(res)
+    # res = np.flip(res, -1)                      # flip vertical, then horizontal
+    res = cv2.bitwise_not(res)
 
-        # normalization
-        # res = cv2.normalize(res, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-        res = res.astype('float32')
-        res = res / 255
-        res = cv2.resize(res, (28, 28))
+    # normalization
+    # res = cv2.normalize(res, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    res = res.astype('float32')
+    res = res / 255
+    res = cv2.resize(res, (28, 28))
 
-        res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-        res = res.reshape(1, 28, 28, 1)
+    res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    res = res.reshape(1, 28, 28, 1)
 
-        probabilities = model.predict(res)
-        print(probabilities)
-        prediction = probabilities.argmax(axis=1)
-        label = labelNames[prediction[0]]
-        print(label)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        draw = cv2.putText(img, label, (boundingBoxes[i][0], boundingBoxes[i][1]), font, 0.5, (0, 0, 255), 1,
-                           cv2.LINE_AA)
+    probabilities = model.predict(res)
+    print(probabilities)
+    prediction = probabilities.argmax(axis=1)
+    label = labelNames[prediction[0]]
+    print(label)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    draw = cv2.putText(img, label, (boundingBoxes[i][0], boundingBoxes[i][1]), font, 0.5, (0, 0, 255), 1,
+                       cv2.LINE_AA)
 
 cv2.imshow('Solution: {}'.format(tp_idx), draw)
 
@@ -159,4 +158,4 @@ cv2.waitKey(0)
 #################################################################################
 
 # Cuvamo resenje u izlazni fajl
-cv2.imwrite("tests/{}_out.png".format(tp_idx), draw)
+cv2.imwrite("tests/{}_out1.png".format(tp_idx), draw)
