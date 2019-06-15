@@ -19,7 +19,7 @@ img = cv2.imread('tests/{}.png'.format(tp_idx))
 # Ne menjati fajl van ove sekcije.
 
 # Ucitavamo model
-model = keras.models.load_model('fashion2.h5')
+model = keras.models.load_model('fashion4.h5')
 
 solution = img.copy()
 
@@ -160,4 +160,4 @@ cv2.waitKey(0)
 #################################################################################
 
 # Cuvamo resenje u izlazni fajl
-cv2.imwrite("tests/{}_out2.png".format(tp_idx), draw)
+cv2.imwrite("tests/{}_out4.png".format(tp_idx), draw)

@@ -33,7 +33,7 @@ x_test = x_test.reshape(10000, 28, 28, 1)
 print(x_train.shape, y_train.shape)
 print(x_test.shape, y_test.shape)
 
-batch_size = 512
+batch_size = 128
 num_classes = 10
 epochs = 40
 
@@ -46,7 +46,7 @@ model.add(Conv2D(32, (5, 5), padding='same', activation='relu'))
 # model.add(BatchNormalization(axis=3))
 # model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))  # Max pooling 2x2
-model.add(Dropout(rate=0.25))  # Dropout metoda regularizacije
+model.add(Dropout(rate=0.5))  # Dropout metoda regularizacije
 
 model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
 # model.add(BatchNormalization(axis=3))
@@ -55,13 +55,13 @@ model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
 # model.add(BatchNormalization(axis=3))
 # model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-model.add(Dropout(rate=0.25))
+model.add(Dropout(rate=0.5))
 
 model.add(Flatten())
 model.add(Dense(512, activation='relu'))  # Prvi potpuno povezan sloj
 # model.add(Activation('relu'))
 model.add(BatchNormalization())
-model.add(Dropout(rate=0.5))
+model.add(Dropout(rate=0.75))
 model.add(Dense(num_classes, activation='softmax'))  # Finalni potpuno povezan sloj
 # model.add(Activation('softmax'))
 
@@ -147,4 +147,4 @@ print('Test accuracy:', scores[1])
 #################################################################################
 
 # Cuvanje istreniranog modela u fajl
-model.save('fashion3.h5')
+model.save('fashion4.h5')
