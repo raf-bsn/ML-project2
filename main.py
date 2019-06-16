@@ -22,6 +22,7 @@ img = cv2.imread('tests/{}.png'.format(tp_idx))
 model = keras.models.load_model('model.h5')
 
 solution = img.copy()
+solution_gray = cv2.cvtColor(solution, cv2.COLOR_BGR2GRAY)
 
 # Removing noise
 dst = cv2.fastNlMeansDenoising(solution,None,50,7,21)
@@ -147,15 +148,23 @@ for i in range(len(boundingBoxes)):
 
     # Make the bounding box a perfect square so that scaling down to 28x28 results in pictures with higher quality
     if imageWidth > imageHeight:
-        boundingBox = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
-        firstImage = solution[boundingBox[1]: boundingBox[1] + boundingBox[2],
-                     boundingBox[0]: boundingBox[0] + boundingBox[2]]
-        res = cv2.resize(firstImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
+        newImage = np.full((imageWidth, imageWidth), 255, np.uint8)
+        razlika = (imageWidth - imageHeight) // 2
+        # boundingBox = (boundingBoxes[i][0], boundingBoxes[i][1] - (imageWidth - imageHeight) // 2, boundingBoxes[i][2], boundingBoxes[i][3])
+        newImage[razlika : razlika + boundingBoxes[i][3], :] = solution_gray[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][3],
+                     boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
+        # firstImage = solution[boundingBox[1]: boundingBox[1] + boundingBox[2],
+        #              boundingBox[0]: boundingBox[0] + boundingBox[2]]
+        res = cv2.resize(newImage, None, fx=28 / imageWidth, fy=28 / imageWidth, interpolation=cv2.INTER_AREA)
     else:
-        boundingBox = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
-        firstImage = solution[boundingBox[1]: boundingBox[1] + boundingBox[3],
-                     boundingBox[0] : boundingBox[0] + boundingBox[3]]
-        res = cv2.resize(firstImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
+        newImage = np.full((imageHeight, imageHeight), 255, np.uint8)
+        razlika = (imageHeight - imageWidth) // 2
+        # boundingBox = (boundingBoxes[i][0] - (imageHeight - imageWidth) // 2, boundingBoxes[i][1], boundingBoxes[i][2], boundingBoxes[i][3])
+        newImage[:, razlika: razlika + boundingBoxes[i][2]] = solution_gray[boundingBoxes[i][1]: boundingBoxes[i][1] + boundingBoxes[i][3],
+                     boundingBoxes[i][0]: boundingBoxes[i][0] + boundingBoxes[i][2]]
+        # firstImage = solution[boundingBox[1]: boundingBox[1] + boundingBox[3],
+        #              boundingBox[0] : boundingBox[0] + boundingBox[3]]
+        res = cv2.resize(newImage, None, fx=28 / imageHeight, fy=28 / imageHeight, interpolation=cv2.INTER_AREA)
 
     # Inverting bits needed because model i trained on black background
     res = cv2.bitwise_not(res)
@@ -166,7 +175,7 @@ for i in range(len(boundingBoxes)):
     res = cv2.resize(res, (28, 28))
 
     # Reshaping to suit model
-    res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    # res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
     res = res.reshape(1, 28, 28, 1)
 
     # Prediction and drawing predicted class
